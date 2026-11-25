@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>세원이 기말고사 필기장</title>
+<link rel="manifest" href="app.webmanifest">
+<meta name="theme-color" content="#26272a">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* VOICE: 조용한 공부 도구 — 손이 가는 곳만 보이게
+   IDEA: 색인 탭이 달린 바인더, 책상 위에 펼친 시험지
+   PICTURE: 시험지 자체가 화면을 채움, 도구는 왼쪽 연필통처럼
+   COLOUR and TYPE: 짙은 책상색 바탕 + 흰 종이, 과목별 탭 색 하나씩 / IBM Plex Sans KR
+   LAYOUT: 상단 탭바, 왼쪽 세로 도구막대(좁으면 하단), 가운데 페이지 스크롤 */
+:root{color-scheme:light dark;
+  --desk:light-dark(#d9d6cf,#1d1e20);--bar:light-dark(#fbfaf7,#26272a);--ink:light-dark(#1c1c1e,#ecebe8);
+  --mute:light-dark(#6b6a66,#a3a29d);--line:light-dark(#e2dfd8,#37383c);--chip:light-dark(#efece6,#313236);
+  --acc:#ff6b4a}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--desk);color:var(--ink);font:15px/1.4 system-ui,"Samsung Sans","Noto Sans KR",sans-serif;overflow:hidden;
+  display:grid;grid-template-rows:auto 1fr;grid-template-columns:auto 1fr;user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+header{grid-column:1/3;display:flex;align-items:flex-end;gap:6px;padding:8px 10px 0;background:var(--bar);border-bottom:1px solid var(--line)}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1 1 auto}
+.tab{flex:none;padding:10px 16px 11px;border-radius:10px 10px 0 0;font-weight:500;color:var(--mute);border-top:4px solid transparent;min-height:44px}
+.tab[aria-selected=true]{color:var(--ink);background:var(--desk);border-top-color:var(--c)}
+.hd-r{display:flex;align-items:center;gap:6px;padding-bottom:6px;flex:none}
+.pill{height:36px;padding:0 12px;border-radius:18px;background:var(--chip);font-size:14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.pill b{font-weight:600}
+#save{font-size:13px;color:var(--mute);white-space:nowrap;padding:0 4px}
+#save.err{color:#e5484d}
+.secs{display:flex;gap:6px;padding:0 0 6px}
+/* toolbar */
+#tools{grid-row:2;background:var(--bar);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;overflow-y:auto;scrollbar-width:none;width:68px;z-index:2}
+.tb{flex:none;width:54px;height:54px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--mute)}
+.tb svg{width:22px;height:22px;flex:none}
+.tb[aria-pressed=true]{background:var(--chip);color:var(--ink)}
+.tb small{font-size:10.5px;line-height:1;white-space:nowrap}
+.sep{width:36px;height:1px;background:var(--line);margin:4px 0;flex:none}
+.sw{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:none}
+.sw i{width:24px;height:24px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.sw[aria-pressed=true]{box-shadow:0 0 0 2px var(--ink)}
+.sz{width:44px;height:34px;display:grid;place-items:center;border-radius:10px;flex:none}
+.sz i{display:block;border-radius:9px;background:var(--mute)}
+.sz[aria-pressed=true]{background:var(--chip)}.sz[aria-pressed=true] i{background:var(--ink)}
+#zoomv{font-size:12px;color:var(--mute);height:24px;display:grid;place-items:center}
+/* viewer */
+#view{grid-row:2;overflow:auto;touch-action:none;position:relative;overscroll-behavior:contain}
+#col{margin:0 auto;padding:16px 16px 40vh;width:calc(var(--pw,800px) + 32px)}
+.pg{margin:0 0 22px}
+.pgh{display:flex;align-items:center;gap:6px;height:40px;color:var(--mute);font-size:13px}
+.pgh .n{margin-right:auto;font-weight:500}
+.mk{height:32px;padding:0 10px;border-radius:16px;font-size:13px;background:var(--chip);color:var(--mute)}
+.mk[aria-pressed=true]{color:#fff;background:var(--m)}
+.mk.clr{background:none}.mk.clr.arm{background:#e5484d;color:#fff}
+.sheet{position:relative;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.18),0 6px 20px rgba(0,0,0,.14);border-radius:3px;overflow:hidden}
+.sheet img{display:block;width:100%;height:100%;object-fit:fill;pointer-events:none;-webkit-user-drag:none}
+.sheet canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;mix-blend-mode:multiply}
+body.noink .sheet canvas.ink{visibility:hidden}
+.sec{margin:6px 0 10px;padding:6px 0;font-weight:600;color:var(--ink);font-size:16px;border-bottom:2px solid var(--c)}
+/* sheet panel */
+#panel{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:5;align-items:flex-start;justify-content:center;padding:70px 16px 16px}
+#panel.on{display:flex}
+.box{background:var(--bar);border-radius:16px;padding:16px;width:min(720px,100%);max-height:calc(100vh - 100px);overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.box h2{margin:0 0 10px;font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px}
+.box h2 button{margin-left:auto;height:40px;padding:0 14px;border-radius:20px;background:var(--chip);font-size:14px;font-weight:500}
+.flt{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.flt button{height:36px;padding:0 14px;border-radius:18px;background:var(--chip);font-size:14px}
+.flt button[aria-pressed=true]{background:var(--ink);color:var(--bar)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.grid button{height:56px;border-radius:10px;background:var(--chip);font-weight:600;font-variant-numeric:tabular-nums;position:relative}
+.grid button.cur{outline:2px solid var(--ink)}
+.grid button i{position:absolute;left:6px;right:6px;bottom:6px;height:4px;border-radius:2px;background:var(--m)}
+.empty{color:var(--mute);padding:20px 0;text-align:center}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bar);padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:6}
+#toast.on{opacity:1}
+.help{color:var(--mute);font-size:13px;margin-top:14px;line-height:1.6}
+#msg{padding:60px 20px;text-align:center;color:var(--mute)}
+@media (max-width:700px){
+  body{grid-template-columns:1fr;grid-template-rows:auto 1fr auto}
+  #tools{grid-row:3;grid-column:1;flex-direction:row;width:auto;height:64px;border-right:0;border-top:1px solid var(--line);overflow-x:auto;overflow-y:hidden;padding:6px 8px}
+  .sep{width:1px;height:36px;margin:0 4px}
+  #view{grid-column:1}
+  header{grid-column:1}
+  .tab{padding:10px 12px 11px}
+  #save{display:none}
+}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="hd-r">
+    <button class="pill" id="pgbtn" aria-label="페이지 목록"><span id="pgcur">–</span></button>
+    <span id="save">불러오는 중</span>
+    <button class="pill" id="fs" aria-label="전체화면">전체화면</button>
+  </div>
+</header>
+
+<nav id="tools" aria-label="필기 도구">
+  <button class="tb" data-tool="pen" aria-pressed="true" aria-label="펜"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1.2-4.6L16.5 4.1a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L8.6 18.8z"/><path d="M14.5 6l3.5 3.5"/></svg><small>펜</small></button>
+  <button class="tb" data-tool="hl" aria-pressed="false" aria-label="형광펜"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-3 3v3h3l3-3"/><path d="M9 14l6.5-9.5 4 4L10 15z"/><path d="M4 21h16" stroke-width="2.6" opacity=".45"/></svg><small>형광</small></button>
+  <button class="tb" data-tool="er" aria-pressed="false" aria-label="지우개"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 20h12"/><path d="M4.6 14.6l9.2-9.2a2 2 0 0 1 2.8 0l3 3a2 2 0 0 1 0 2.8L12 18.8a2 2 0 0 1-1.4.6H8.4a2 2 0 0 1-1.4-.6l-2.4-2.4a2 2 0 0 1 0-2.8z"/><path d="M9 10l5 5"/></svg><small>지우개</small></button>
+  <div class="sep"></div>
+  <div id="sws" style="display:contents"></div>
+  <div class="sep"></div>
+  <div id="szs" style="display:contents"></div>
+  <div class="sep"></div>
+  <button class="tb" id="undo" aria-label="실행취소"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><small>취소</small></button>
+  <button class="tb" id="redo" aria-label="다시실행"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg><small>다시</small></button>
+  <div class="sep"></div>
+  <button class="tb" id="hide" aria-pressed="false" aria-label="필기 숨기기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><small>필기보기</small></button>
+  <button class="tb" id="finger" aria-pressed="false" aria-label="손가락으로 필기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5a1.5 1.5 0 0 1 3 0v5"/><path d="M12 10V8.5a1.5 1.5 0 0 1 3 0V11"/><path d="M15 10.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.5a6 6 0 0 1-5-2.7L4 15a1.5 1.5 0 0 1 2.5-1.6L9 16"/></svg><small>손필기</small></button>
+  <div class="sep"></div>
+  <button class="tb" id="zin" aria-label="확대"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M11 8v6M8 11h6M20 20l-4-4"/></svg></button>
+  <div id="zoomv">100%</div>
+  <button class="tb" id="zout" aria-label="축소"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M20 20l-4-4"/></svg></button>
+</nav>
+
+<main id="view"><div id="col"><div id="msg">시험지를 불러오는 중…</div></div></main>
+
+<div id="panel" role="dialog" aria-modal="true" aria-label="페이지 목록">
+  <div class="box">
+    <h2><span id="ptitle">페이지</span><button id="pclose">닫기</button></h2>
+    <div class="flt" id="pflt"></div>
+    <div class="grid" id="pgrid"></div>
+    <div class="secs" id="psecs" style="margin-top:12px;flex-wrap:wrap"></div>
+    <div class="flt" style="margin-top:16px;align-items:center">
+      <button id="bexp">백업 파일 만들기</button>
+      <label class="pill" style="height:36px;cursor:pointer">백업 불러오기<input type="file" id="bimp" accept=".json,application/json" hidden></label>
+      <span id="bmsg" style="font-size:13px;color:var(--mute)"></span>
+    </div>
+    <p class="help">필기는 이 기기 안에만 저장되고 인터넷이 없어도 돼. 브라우저의 '인터넷 사용 기록 삭제'에서 사이트 데이터까지 지우면 필기도 같이 지워지니까 가끔 백업 파일을 만들어 둬.<br>S펜으로 쓰고, 손가락 한 개로 스크롤, 두 개로 확대·축소. S펜 옆 버튼을 누른 채로 그으면 지우개가 돼 (기기 설정에 따라 다를 수 있어). '필기보기'를 끄면 깨끗한 시험지로 다시 풀어볼 수 있어.</p>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+{
+const $ = s => document.querySelector(s);
+const view = $('#view'), col = $('#col');
+const SUBJ_COLORS = ['#ff6b4a', '#3ea0ff', '#f5b70a', '#9b7bff', '#1fbf8f'];
+const MARKS = [{k:'imp', t:'중요', c:'#e5484d'}, {k:'again', t:'다시', c:'#f59e0b'}, {k:'done', t:'완료', c:'#16a34a'}];
+const PALETTE = {
+  pen: [{c:'#1b1b1f'}, {c:'#e5383b'}, {c:'#1d64d8'}],
+  hl: [{c:'#ffe14d'}, {c:'#86e08f'}, {c:'#ff9ccf'}]
+};
+const SIZES = {pen: [1.5, 2.5, 4], hl: [12, 20, 30], er: [10, 20, 36]};
+const esc = v => String(v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+/* ---------- local storage helpers ---------- */
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem('sw:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('sw:' + k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+};
+
+/* ---------- state ---------- */
+let M = null, S = null, si = 0;
+let pages = [];
+const ann = {};            // key -> {t, s:[strokes]}
+let marks = LS.get('marks', {m:{}, t:0});
+const ui = LS.get('ui', {tool:'pen', col:{pen:0, hl:0}, size:{pen:1, hl:1, er:1}, finger:false, zoom:1, subj:0, pos:{}});
+let hideInk = false;
+let zoom = ui.zoom || 1;
+let undoS = [], redoS = [];
+
+/* ---------- toast ---------- */
+let tt = 0;
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 1800); }
+
+/* ---------- save status ---------- */
+function status(txt, err) { const s = $('#save'); s.textContent = txt; s.classList.toggle('err', !!err); }
+
+/* ---------- toolbar ---------- */
+function renderTools() {
+  document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === ui.tool));
+  const sws = $('#sws');
+  if (ui.tool === 'er') sws.innerHTML = '';
+  else sws.innerHTML = PALETTE[ui.tool].map((p, i) => `<button class="sw" data-sw="${i}" aria-label="색 ${i+1}" aria-pressed="${ui.col[ui.tool] === i}" style="--c:${p.c}"><i></i></button>`).join('');
+  $('#szs').innerHTML = SIZES[ui.tool].map((v, i) => {
+    const d = [6, 10, 16][i];
+    return `<button class="sz" data-sz="${i}" aria-label="굵기 ${i+1}" aria-pressed="${ui.size[ui.tool] === i}"><i style="width:${ui.tool==='hl'?22:d}px;height:${d}px"></i></button>`;
+  }).join('');
+  $('#finger').setAttribute('aria-pressed', !!ui.finger);
+  $('#hide').setAttribute('aria-pressed', hideInk);
+  $('#zoomv').textContent = Math.round(zoom * 100) + '%';
+}
+$('#tools').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.tool) { ui.tool = b.dataset.tool; }
+  else if (b.dataset.sw) { ui.col[ui.tool] = +b.dataset.sw; }
+  else if (b.dataset.sz) { ui.size[ui.tool] = +b.dataset.sz; }
+  else if (b.id === 'finger') { ui.finger = !ui.finger; toast(ui.finger ? '손가락으로도 필기돼 (스크롤은 막대·휠로)' : '이제 펜으로만 필기돼'); }
+  else if (b.id === 'hide') { hideInk = !hideInk; document.body.classList.toggle('noink', hideInk); toast(hideInk ? '필기 숨김 — 깨끗한 시험지로 풀어보기' : '필기 다시 보기'); }
+  else if (b.id === 'undo') undo();
+  else if (b.id === 'redo') redo();
+  else if (b.id === 'zin') setZoom(zoom * 1.25);
+  else if (b.id === 'zout') setZoom(zoom / 1.25);
+  else return;
+  saveUi(); renderTools();
+});
+let uiT = 0;
+function saveUi() { clearTimeout(uiT); uiT = setTimeout(() => { ui.zoom = zoom; LS.set('ui', ui); }, 300); }
+
+/* ---------- subjects / layout ---------- */
+function renderTabs() {
+  $('#tabs').innerHTML = M.subjects.map((s, i) =>
+    `<button class="tab" role="tab" data-si="${i}" aria-selected="${i === si}" style="--c:${SUBJ_COLORS[i % SUBJ_COLORS.length]}">${esc(s.name)}</button>`).join('');
+}
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-si]'); if (b && +b.dataset.si !== si) openSubject(+b.dataset.si); });
+
+function baseW() { return Math.min(view.clientWidth - 32, 1000); }
+function applyWidth() { col.style.setProperty('--pw', (baseW() * zoom) + 'px'); }
+
+let io = null;
+function openSubject(i) {
+  rememberPos();
+  si = i; S = M.subjects[i]; ui.subj = i; saveUi();
+  document.documentElement.style.setProperty('--acc', SUBJ_COLORS[i % SUBJ_COLORS.length]);
+  renderTabs();
+  undoS = []; redoS = [];
+  pages.forEach(p => dropCanvas(p));
+  const secAt = {}; (S.sections || []).forEach(s => { secAt[s.start] = s.name; });
+  const color = SUBJ_COLORS[i % SUBJ_COLORS.length];
+  col.innerHTML = S.pages.map((p, j) => {
+    const key = S.id + '-' + String(j + 1).padStart(3, '0');
+    const sec = secAt[j + 1] ? `<div class="sec" style="--c:${color}" id="sec-${j+1}">${esc(secAt[j + 1])}</div>` : '';
+    return `${sec}<section class="pg" data-i="${j}" data-key="${key}">
+      <div class="pgh"><span class="n">${j + 1} / ${S.pages.length}</span>
+        ${MARKS.map(m => `<button class="mk" data-mk="${m.k}" style="--m:${m.c}" aria-pressed="false">${m.t}</button>`).join('')}
+        <button class="mk clr" data-clr>지우기</button></div>
+      <div class="sheet" style="aspect-ratio:${p.w}/${p.h}"><img alt="${j + 1}쪽" width="${p.w}" height="${p.h}" draggable="false"></div>
+    </section>`;
+  }).join('');
+  pages = [...col.querySelectorAll('.pg')].map((el, j) => ({
+    i: j, key: el.dataset.key, src: S.pages[j].src, w: S.pages[j].w, h: S.pages[j].h,
+    el, sheet: el.querySelector('.sheet'), img: el.querySelector('img'), cv: null, ctx: null
+  }));
+  pages.forEach(p => { if (!ann[p.key]) ann[p.key] = LS.get('a:' + p.key, {t:0, s:[]}); });
+  renderMarks();
+  applyWidth();
+  if (io) io.disconnect();
+  io = new IntersectionObserver(ents => {
+    for (const en of ents) {
+      const p = pages[+en.target.dataset.i];
+      if (en.isIntersecting) { if (!p.img.src) p.img.src = p.src; ensureCanvas(p); }
+      else dropCanvas(p);
+    }
+  }, {root: view, rootMargin: '1400px 0px'});
+  pages.forEach(p => io.observe(p.el));
+  const pos = ui.pos && ui.pos[S.id];
+  requestAnimationFrame(() => { view.scrollTop = pos ? pos * col.scrollHeight : 0; updateCur(); });
+}
+function rememberPos() { if (S && col.scrollHeight) { ui.pos = ui.pos || {}; ui.pos[S.id] = view.scrollTop / col.scrollHeight; saveUi(); } }
+
+/* ---------- canvases ---------- */
+function canvasScale(p) {
+  const w = p.sheet.clientWidth || baseW() * zoom;
+  let dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  let px = w * dpr;
+  const maxW = 4096, maxArea = 12e6, h = px * p.h / p.w;
+  if (px > maxW) px = maxW;
+  if (px * (px * p.h / p.w) > maxArea) px = Math.sqrt(maxArea * p.w / p.h);
+  return Math.floor(px);
+}
+function ensureCanvas(p) {
+  if (p.cv) return;
+  const cv = document.createElement('canvas'); cv.className = 'ink';
+  p.sheet.appendChild(cv); p.cv = cv; p.ctx = cv.getContext('2d');
+  sizeCanvas(p);
+}
+function sizeCanvas(p) {
+  if (!p.cv) return;
+  const W = canvasScale(p), H = Math.round(W * p.h / p.w);
+  if (p.cv.width !== W || p.cv.height !== H) { p.cv.width = W; p.cv.height = H; }
+  redraw(p);
+}
+function dropCanvas(p) { if (p.cv) { p.cv.width = p.cv.height = 0; p.cv.remove(); p.cv = null; p.ctx = null; } }
+function redraw(p) {
+  if (!p.ctx) return;
+  const c = p.ctx, W = p.cv.width;
+  c.clearRect(0, 0, W, p.cv.height);
+  const st = ann[p.key].s;
+  for (const s of st) if (s.k === 'h') drawStroke(c, s, W);
+  for (const s of st) if (s.k === 'p') drawStroke(c, s, W);
+}
+/* stroke: {k:'p'|'h', c:'#hex', w:number(per-mille of page width), p:[x,y,pr,...] x,y in 1/10000 of width, pr 0..100} */
+function drawStroke(c, s, W, from) {
+  const P = s.p, n = P.length / 3, k = W / 10000;
+  if (!n) return;
+  c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = s.c; c.fillStyle = s.c;
+  if (s.k === 'h') {
+    c.globalAlpha = .5; c.lineWidth = s.w * W / 1000;
+    c.beginPath(); c.moveTo(P[0] * k, P[1] * k);
+    if (n === 1) c.lineTo(P[0] * k + .1, P[1] * k);
+    for (let i = 1; i < n; i++) {
+      const x = P[i*3] * k, y = P[i*3+1] * k;
+      if (i < n - 1) { const nx = P[i*3+3] * k, ny = P[i*3+4] * k; c.quadraticCurveTo(x, y, (x + nx) / 2, (y + ny) / 2); }
+      else c.lineTo(x, y);
+    }
+    c.stroke(); c.globalAlpha = 1; return;
+  }
+  const base = s.w * W / 1000;
+  const lw = pr => base * (0.35 + 0.9 * pr / 100);
+  if (n === 1) { c.beginPath(); c.arc(P[0] * k, P[1] * k, lw(P[2]) / 2, 0, 7); c.fill(); return; }
+  const start = Math.max(1, from || 1);
+  for (let i = start; i < n; i++) {
+    const x0 = P[i*3-3] * k, y0 = P[i*3-2] * k, x1 = P[i*3] * k, y1 = P[i*3+1] * k;
+    const mx0 = i > 1 ? (P[i*3-6] * k + x0) / 2 : x0, my0 = i > 1 ? (P[i*3-5] * k + y0) / 2 : y0;
+    const mx1 = (x0 + x1) / 2, my1 = (y0 + y1) / 2;
+    c.lineWidth = lw((P[i*3-1] + P[i*3+2]) / 2);
+    c.beginPath(); c.moveTo(mx0, my0); c.quadraticCurveTo(x0, y0, mx1, my1);
+    if (i === n - 1) c.lineTo(x1, y1);
+    c.stroke();
+  }
+}
+
+/* ---------- input ---------- */
+let draw = null;                 // active stroke {p, s, rect, pid, live, lctx, erase, removed}
+const touches = new Map();
+let pan = null, pinch = null, lastPen = 0, inertia = 0;
+
+function pageAt(target) { const sh = target.closest && target.closest('.sheet'); return sh ? pages.find(p => p.sheet === sh) : null; }
+function isDrawPointer(e) {
+  if (e.pointerType === 'pen') return true;
+  if (e.pointerType === 'mouse') return e.button === 0;
+  return e.pointerType === 'touch' && ui.finger;
+}
+view.addEventListener('pointerdown', e => {
+  cancelInertia();
+  if (e.target.closest('button')) return;
+  if (e.pointerType === 'pen') { lastPen = performance.now(); touches.clear(); pan = pinch = null; }
+  if (isDrawPointer(e)) {
+    const p = pageAt(e.target); if (!p || draw) return;
+    if (hideInk) { toast('필기가 숨겨져 있어 — 필기보기를 켜고 써줘'); return; }
+    e.preventDefault();
+    try { view.setPointerCapture(e.pointerId); } catch (_) {}
+    startStroke(p, e);
+    return;
+  }
+  if (e.pointerType !== 'touch') return;
+  if (draw || performance.now() - lastPen < 500) return;           // palm while writing
+  if (Math.max(e.width || 0, e.height || 0) > 60) return;           // palm-sized contact
+  try { view.setPointerCapture(e.pointerId); } catch (_) {}
+  touches.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  if (touches.size === 1) pan = {x: e.clientX, y: e.clientY, t: performance.now(), vx: 0, vy: 0, moved: false};
+  else if (touches.size === 2) { pan = null; const [a, b] = [...touches.values()]; pinch = {d: Math.hypot(a.x - b.x, a.y - b.y), z: zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2}; }
+});
+view.addEventListener('pointermove', e => {
+  if (e.pointerType === 'pen') lastPen = performance.now();
+  if (draw && e.pointerId === draw.pid) { moveStroke(e); return; }
+  if (!touches.has(e.pointerId)) return;
+  touches.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  if (pinch && touches.size >= 2) {
+    const [a, b] = [...touches.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const r = view.getBoundingClientRect();
+    setZoom(pinch.z * d / pinch.d, mx - r.left, my - r.top, true);
+    view.scrollLeft -= mx - pinch.mx; view.scrollTop -= my - pinch.my;
+    pinch.mx = mx; pinch.my = my;
+  } else if (pan) {
+    const now = performance.now(), dt = Math.max(1, now - pan.t), dx = e.clientX - pan.x, dy = e.clientY - pan.y;
+    view.scrollLeft -= dx; view.scrollTop -= dy;
+    pan.vx = .8 * (dx / dt) + .2 * pan.vx; pan.vy = .8 * (dy / dt) + .2 * pan.vy;
+    pan.x = e.clientX; pan.y = e.clientY; pan.t = now;
+  }
+});
+function endPointer(e) {
+  if (draw && e.pointerId === draw.pid) { endStroke(); return; }
+  if (!touches.has(e.pointerId)) return;
+  touches.delete(e.pointerId);
+  if (touches.size === 1) {
+    const [a] = [...touches.values()];
+    pinch = null; pan = {x: a.x, y: a.y, t: performance.now(), vx: 0, vy: 0};
+    commitZoom();
+  } else if (touches.size === 0) {
+    if (pinch) { pinch = null; commitZoom(); }
+    else if (pan && e.type === 'pointerup' && performance.now() - pan.t < 80) startInertia(pan.vx, pan.vy);
+    pan = null;
+  }
+}
+view.addEventListener('pointerup', endPointer);
+view.addEventListener('pointercancel', endPointer);
+view.addEventListener('lostpointercapture', e => { if (draw && e.pointerId === draw.pid) endStroke(); });
+view.addEventListener('contextmenu', e => e.preventDefault());
+view.addEventListener('wheel', e => {
+  if (e.ctrlKey) { e.preventDefault(); const r = view.getBoundingClientRect(); setZoom(zoom * Math.exp(-e.deltaY / 300), e.clientX - r.left, e.clientY - r.top); }
+}, {passive: false});
+
+function startInertia(vx, vy) {
+  let last = performance.now();
+  const step = now => {
+    const dt = now - last; last = now;
+    view.scrollLeft -= vx * dt; view.scrollTop -= vy * dt;
+    const f = Math.pow(.995, dt); vx *= f; vy *= f;
+    if (Math.abs(vx) + Math.abs(vy) > .02) inertia = requestAnimationFrame(step); else inertia = 0;
+  };
+  inertia = requestAnimationFrame(step);
+}
+function cancelInertia() { if (inertia) cancelAnimationFrame(inertia); inertia = 0; }
+
+/* ---------- strokes ---------- */
+function ptOf(e, rect) {
+  const x = Math.round((e.clientX - rect.left) / rect.width * 10000);
+  const y = Math.round((e.clientY - rect.top) / rect.width * 10000);
+  const pr = e.pointerType === 'pen' ? Math.round((e.pressure || .5) * 100) : 50;
+  return [x, y, pr];
+}
+function startStroke(p, e) {
+  ensureCanvas(p);
+  const rect = p.sheet.getBoundingClientRect();
+  const erase = ui.tool === 'er' || (e.pointerType === 'pen' && ((e.buttons & 2) || (e.buttons & 32)));
+  draw = {p, rect, pid: e.pointerId, erase, removed: []};
+  if (erase) { eraseAt(ptOf(e, rect)); return; }
+  const tool = ui.tool === 'hl' ? 'hl' : 'pen';
+  draw.s = {k: tool === 'hl' ? 'h' : 'p', c: PALETTE[tool][ui.col[tool]].c, w: SIZES[tool][ui.size[tool]], p: ptOf(e, rect)};
+  const lv = document.createElement('canvas'); lv.className = 'live';
+  lv.width = p.cv.width; lv.height = p.cv.height;
+  p.sheet.appendChild(lv);
+  draw.live = lv; draw.lctx = lv.getContext('2d', {desynchronized: true});
+  drawStroke(draw.lctx, draw.s, lv.width);
+}
+function moveStroke(e) {
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  const list = evs.length ? evs : [e];
+  if (draw.erase) { for (const ev of list) eraseAt(ptOf(ev, draw.rect)); return; }
+  const P = draw.s.p, before = P.length / 3;
+  for (const ev of list) {
+    const q = ptOf(ev, draw.rect);
+    const lx = P[P.length - 3], ly = P[P.length - 2];
+    if (Math.abs(q[0] - lx) + Math.abs(q[1] - ly) < 6) continue;
+    P.push(q[0], q[1], q[2]);
+  }
+  const after = P.length / 3;
+  if (after === before) return;
+  if (draw.s.k === 'h') { draw.lctx.clearRect(0, 0, draw.live.width, draw.live.height); drawStroke(draw.lctx, draw.s, draw.live.width); }
+  else drawStroke(draw.lctx, draw.s, draw.live.width, Math.max(1, before - 1));
+}
+function endStroke() {
+  const d = draw; draw = null; if (!d) return;
+  const p = d.p;
+  if (d.erase) {
+    if (d.removed.length) { pushUndo({type: 'er', key: p.key, items: d.removed}); changed(p.key); }
+    return;
+  }
+  d.live.remove();
+  ann[p.key].s.push(d.s);
+  redraw(p);
+  pushUndo({type: 'add', key: p.key, s: d.s});
+  changed(p.key);
+}
+function bbox(s) {
+  if (s._b) return s._b;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (let i = 0; i < s.p.length; i += 3) { const x = s.p[i], y = s.p[i+1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  Object.defineProperty(s, '_b', {value: [x0, y0, x1, y1], enumerable: false});
+  return s._b;
+}
+function eraseAt(q) {
+  const p = draw.p, st = ann[p.key].s;
+  const r = SIZES.er[ui.size.er] * 10;
+  let hit = false;
+  for (let i = st.length - 1; i >= 0; i--) {
+    const s = st[i], b = bbox(s), pad = r + s.w * 5;
+    if (q[0] < b[0] - pad || q[0] > b[2] + pad || q[1] < b[1] - pad || q[1] > b[3] + pad) continue;
+    for (let j = 0; j < s.p.length; j += 3) {
+      if (Math.hypot(s.p[j] - q[0], s.p[j+1] - q[1]) < pad) { draw.removed.push({s, i}); st.splice(i, 1); hit = true; break; }
+    }
+  }
+  if (hit) redraw(p);
+}
+
+/* ---------- undo ---------- */
+function pushUndo(a) { undoS.push(a); if (undoS.length > 200) undoS.shift(); redoS = []; }
+function pageByKey(k) { return pages.find(p => p.key === k); }
+function apply(a, inverse) {
+  const st = ann[a.key].s;
+  if (a.type === 'add') { if (inverse) { const i = st.lastIndexOf(a.s); if (i >= 0) st.splice(i, 1); } else st.push(a.s); }
+  else if (a.type === 'er') {
+    if (inverse) [...a.items].reverse().forEach(it => st.splice(Math.min(it.i, st.length), 0, it.s));
+    else a.items.forEach(it => { const i = st.indexOf(it.s); if (i >= 0) st.splice(i, 1); });
+  } else if (a.type === 'clr') { ann[a.key].s = inverse ? a.items.slice() : []; }
+  const p = pageByKey(a.key); if (p) { redraw(p); if (inverse || a.type !== 'clr') scrollIntoViewIfFar(p); }
+  changed(a.key);
+}
+function scrollIntoViewIfFar(p) {
+  const r = p.el.getBoundingClientRect(), v = view.getBoundingClientRect();
+  if (r.bottom < v.top || r.top > v.bottom) view.scrollTop += r.top - v.top - 20;
+}
+function undo() { const a = undoS.pop(); if (!a) return toast('되돌릴 게 없어'); apply(a, true); redoS.push(a); }
+function redo() { const a = redoS.pop(); if (!a) return toast('다시 할 게 없어'); apply(a, false); undoS.push(a); }
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  if (e.key === 'Escape') closePanel();
+});
+
+/* ---------- page header buttons ---------- */
+col.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const p = pages[+b.closest('.pg').dataset.i];
+  if (b.dataset.mk) {
+    const cur = marks.m[p.key] || [];
+    const set = new Set(Array.isArray(cur) ? cur : [cur]);
+    set.has(b.dataset.mk) ? set.delete(b.dataset.mk) : set.add(b.dataset.mk);
+    if (b.dataset.mk === 'done' && set.has('done')) set.delete('again');
+    if (b.dataset.mk === 'again' && set.has('again')) set.delete('done');
+    if (set.size) marks.m[p.key] = [...set]; else delete marks.m[p.key];
+    marks.t = Date.now(); LS.set('marks', marks); renderMarks(); saveMarks();
+  } else if (b.hasAttribute('data-clr')) {
+    if (!ann[p.key].s.length) return toast('이 페이지엔 필기가 없어');
+    if (!b.classList.contains('arm')) { b.classList.add('arm'); b.textContent = '한 번 더 누르면 지워짐'; setTimeout(() => { b.classList.remove('arm'); b.textContent = '지우기'; }, 3000); return; }
+    b.classList.remove('arm'); b.textContent = '지우기';
+    const items = ann[p.key].s.slice();
+    ann[p.key].s = []; redraw(p); pushUndo({type: 'clr', key: p.key, items}); changed(p.key);
+    toast('지웠어 — 실행취소로 되돌릴 수 있어');
+  }
+});
+function marksOf(key) { const v = marks.m[key]; return v ? (Array.isArray(v) ? v : [v]) : []; }
+function renderMarks() {
+  for (const p of pages) {
+    const ms = marksOf(p.key);
+    p.el.querySelectorAll('[data-mk]').forEach(b => b.setAttribute('aria-pressed', ms.includes(b.dataset.mk)));
+  }
+}
+
+/* ---------- zoom ---------- */
+let zT = 0;
+function setZoom(z, mx, my, live) {
+  z = Math.min(4, Math.max(.5, z));
+  if (Math.abs(z - zoom) < 1e-4) return;
+  if (mx == null) { mx = view.clientWidth / 2; my = view.clientHeight / 2; }
+  const k = z / zoom;
+  const sl = view.scrollLeft, st = view.scrollTop;
+  zoom = z; applyWidth();
+  view.scrollLeft = (sl + mx) * k - mx;
+  view.scrollTop = (st + my) * k - my;
+  $('#zoomv').textContent = Math.round(zoom * 100) + '%';
+  if (!live) commitZoom();
+}
+function commitZoom() { clearTimeout(zT); zT = setTimeout(() => { pages.forEach(p => sizeCanvas(p)); saveUi(); }, 180); }
+let rT = 0;
+new ResizeObserver(() => { clearTimeout(rT); rT = setTimeout(() => { if (!S) return; applyWidth(); pages.forEach(p => sizeCanvas(p)); }, 150); }).observe(view);
+
+/* ---------- current page indicator ---------- */
+let curI = 0, sT = 0;
+function updateCur() {
+  if (!pages.length) return;
+  const mid = view.scrollTop + view.clientHeight * .35;
+  let lo = 0, hi = pages.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (pages[m].el.offsetTop <= mid) lo = m; else hi = m - 1; }
+  curI = lo;
+  $('#pgcur').innerHTML = `<b>${curI + 1}</b> / ${pages.length}쪽`;
+}
+view.addEventListener('scroll', () => { if (!sT) sT = requestAnimationFrame(() => { sT = 0; updateCur(); }); clearTimeout(view._pt); view._pt = setTimeout(rememberPos, 500); }, {passive: true});
+
+/* ---------- page panel ---------- */
+let flt = 'all';
+function openPanel() {
+  $('#panel').classList.add('on');
+  $('#ptitle').textContent = S.name + ' — 페이지';
+  renderPanel();
+}
+function closePanel() { $('#panel').classList.remove('on'); }
+function renderPanel() {
+  const cnt = k => pages.filter(p => marksOf(p.key).includes(k)).length;
+  $('#pflt').innerHTML = [{k:'all', t:'전체 ' + pages.length}].concat(MARKS.map(m => ({k: m.k, t: m.t + ' ' + cnt(m.k)})), [{k:'ink', t:'필기한 쪽 ' + pages.filter(p => ann[p.key].s.length).length}])
+    .map(f => `<button data-f="${f.k}" aria-pressed="${flt === f.k}">${f.t}</button>`).join('');
+  const list = pages.filter(p => flt === 'all' ? true : flt === 'ink' ? ann[p.key].s.length : marksOf(p.key).includes(flt));
+  $('#pgrid').innerHTML = list.length ? list.map(p => {
+    const ms = marksOf(p.key), m = MARKS.find(x => ms.includes(x.k));
+    return `<button data-go="${p.i}" class="${p.i === curI ? 'cur' : ''}">${p.i + 1}${m ? `<i style="--m:${m.c}"></i>` : ''}</button>`;
+  }).join('') : `<div class="empty">아직 표시한 페이지가 없어</div>`;
+  $('#psecs').innerHTML = (S.sections || []).map(s => `<button class="pill" data-go="${s.start - 1}">${esc(s.name)} · ${s.start}쪽부터</button>`).join('');
+}
+$('#pgbtn').addEventListener('click', openPanel);
+$('#pclose').addEventListener('click', closePanel);
+$('#panel').addEventListener('click', e => {
+  if (e.target.id === 'panel') return closePanel();
+  const f = e.target.closest('[data-f]'); if (f) { flt = f.dataset.f; return renderPanel(); }
+  const g = e.target.closest('[data-go]');
+  if (g) { const p = pages[+g.dataset.go]; if (p) { cancelInertia(); view.scrollTop = p.el.offsetTop - 8; closePanel(); } }
+});
+
+/* ---------- fullscreen ---------- */
+const fsBtn = $('#fs');
+if (!document.documentElement.requestFullscreen) fsBtn.hidden = true;
+fsBtn.addEventListener('click', async () => {
+  try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }
+  catch (e) { toast('여기선 전체화면이 안 돼 — 브라우저 메뉴로 열어줘'); }
+});
+
+/* ---------- persistence: IndexedDB on this device only ---------- */
+let idb = null;
+function openIdb() {
+  return new Promise(res => {
+    try {
+      const rq = indexedDB.open('sewon-notes', 1);
+      rq.onupgradeneeded = () => { const d = rq.result; d.createObjectStore('ann'); d.createObjectStore('meta'); };
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => res(null);
+      rq.onblocked = () => res(null);
+    } catch (e) { res(null); }
+  });
+}
+function idbAll(store) {
+  return new Promise(res => {
+    if (!idb) return res([]);
+    try {
+      const out = [], tx = idb.transaction(store, 'readonly'), cur = tx.objectStore(store).openCursor();
+      cur.onsuccess = () => { const c = cur.result; if (c) { out.push([c.key, c.value]); c.continue(); } else res(out); };
+      cur.onerror = () => res(out);
+    } catch (e) { res([]); }
+  });
+}
+function idbPut(store, key, val) {
+  return new Promise((res, rej) => {
+    if (!idb) return rej(new Error('no idb'));
+    try {
+      const tx = idb.transaction(store, 'readwrite');
+      tx.objectStore(store).put(val, key);
+      tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
+    } catch (e) { rej(e); }
+  });
+}
+const pending = new Set(); let flushT = 0, marksDirty = false, saveErr = false;
+function changed(key) {
+  ann[key].t = Date.now();
+  pending.add(key); status('저장 중…');
+  clearTimeout(flushT); flushT = setTimeout(flush, 250);
+}
+function saveMarks() { marksDirty = true; clearTimeout(flushT); flushT = setTimeout(flush, 250); }
+async function flush() {
+  const keys = [...pending]; pending.clear();
+  const md = marksDirty; marksDirty = false;
+  let ok = true;
+  for (const k of keys) {
+    const v = {t: ann[k].t, s: ann[k].s};
+    try { await idbPut('ann', k, v); } catch (e) { ok = LS.set('a:' + k, v) && ok; }
+  }
+  if (md) { try { await idbPut('meta', 'marks', marks); } catch (e) {} LS.set('marks', marks); }
+  saveErr = !ok;
+  status(ok ? '이 기기에 저장됨' : '저장 실패 — 백업 파일을 만들어 둬', !ok);
+}
+window.addEventListener('pagehide', () => { rememberPos(); ui.zoom = zoom; LS.set('ui', ui); if (pending.size || marksDirty) flush(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && (pending.size || marksDirty)) flush(); });
+
+/* ---------- backup ---------- */
+function stamp() { const d = new Date(), z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}`; }
+$('#bexp').addEventListener('click', () => {
+  const data = {app: 'sewon-notes', v: 1, at: Date.now(), marks, ann: {}};
+  for (const k in ann) if (ann[k].s.length || ann[k].t) data.ann[k] = {t: ann[k].t, s: ann[k].s};
+  const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `세원이-기말고사필기-백업-${stamp()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  $('#bmsg').textContent = '다운로드 폴더에 저장했어';
+});
+$('#bimp').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.app !== 'sewon-notes' || !d.ann) throw 0;
+    let n = 0;
+    for (const k in d.ann) {
+      if (!/^[a-z]+-\d{3}$/.test(k)) continue;
+      const v = d.ann[k]; if (!v || !Array.isArray(v.s)) continue;
+      ann[k] = {t: +v.t || Date.now(), s: v.s.map(s => ({k: s.k === 'h' ? 'h' : 'p', c: /^#[0-9a-f]{6}$/i.test(s.c) ? s.c : '#1b1b1f', w: +s.w || 2, p: Array.isArray(s.p) ? s.p.map(Number) : []}))};
+      pending.add(k); n++;
+    }
+    if (d.marks && d.marks.m && typeof d.marks.m === 'object') { marks = {m: d.marks.m, t: Date.now()}; marksDirty = true; }
+    await flush();
+    pages.forEach(p => { if (!ann[p.key]) ann[p.key] = {t: 0, s: []}; redraw(p); });
+    renderMarks(); renderPanel();
+    $('#bmsg').textContent = n + '쪽 필기를 불러왔어';
+  } catch (err) { $('#bmsg').textContent = '이 파일은 백업 파일이 아니야'; }
+});
+
+/* ---------- boot ---------- */
+renderTools();
+(async () => {
+  idb = await openIdb();
+  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+  for (const [k, v] of await idbAll('ann')) if (v && Array.isArray(v.s)) ann[k] = v;
+  const meta = await idbAll('meta');
+  const mk = meta.find(x => x[0] === 'marks');
+  if (mk && mk[1] && (mk[1].t || 0) >= (marks.t || 0)) marks = mk[1];
+  status(idb ? '이 기기에 저장됨' : '이 브라우저는 저장이 불안정해 — 백업을 자주 해줘', !idb);
+  try {
+    const m = await (await fetch('pages.json')).json();
+    M = m; document.title = m.title || document.title;
+    if (!M.subjects || !M.subjects.length) { col.innerHTML = '<div id="msg">아직 시험지가 없어</div>'; return; }
+    openSubject(Math.min(ui.subj || 0, M.subjects.length - 1));
+  } catch (e) { col.innerHTML = '<div id="msg">시험지를 불러오지 못했어. 처음 한 번은 인터넷에 연결된 상태로 열어줘.</div>'; }
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    try { await navigator.serviceWorker.register('sw.js'); } catch (e) {}
+  }
+})();
+}
+</script>
+</body>
+</html>
